@@ -1,16 +1,17 @@
-MFRC522-python
+MFRC522-python based UID reader
 ==============
 
 A small class to interface with the NFC reader Module MFRC522 on the Raspberry Pi.
 
-This is a Python port of the example code for the NFC module MF522-AN.
+This is a modified Python port of the example code for the NFC module MF522-AN.
 
 ##Requirements
-This code requires you to have SPI-Py installed from the following repository:
-https://github.com/lthiery/SPI-Py
+This code requires you to have spidev installed from pip
 
-##Examples
-This repository includes a couple of examples showing how to read, write, and dump data from a chip. They are thoroughly commented, and should be easy to understand.
+##Disclaimer
+This code is only intended to be able to read UIDs, and all other functionality left over from
+the original code is untested.
+
 
 ## Pins
 You can use [this](http://i.imgur.com/y7Fnvhq.png) image for reference.
@@ -23,7 +24,7 @@ You can use [this](http://i.imgur.com/y7Fnvhq.png) image for reference.
 | MISO | 21    | GPIO9      |
 | IRQ  | None  | None       |
 | GND  | Any   | Any Ground |
-| RST  | 22    | GPIO25     |
+| RST  | 17    | Any High   |
 | 3.3V | 1     | 3V3        |
 
 ##Usage
