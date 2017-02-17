@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 
-import RPi.GPIO as GPIO
 import MFRC522
 
 # Create an object of the class MFRC522
@@ -43,5 +42,3 @@ while True:
     except KeyboardInterrupt:
         print("Ctrl+C captured, ending read.")
         break
-
-GPIO.cleanup()

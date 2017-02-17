@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 
-import RPi.GPIO as GPIO
 import spi
 from time import sleep
 
@@ -121,9 +120,6 @@ class MFRC522:
 
     def __init__(self, dev='/dev/spidev0.0', spd=1000000):
         spi.openSPI(device=dev, speed=spd)
-        GPIO.setmode(GPIO.BOARD)
-        GPIO.setup(22, GPIO.OUT)
-        GPIO.output(self.NRSTPD, 1)
         self.MFRC522_Init()
 
     def MFRC522_Reset(self):
@@ -332,8 +328,6 @@ class MFRC522:
             print(self.MFRC522_Read(i))
 
     def MFRC522_Init(self):
-        GPIO.output(self.NRSTPD, 1)
-
         self.MFRC522_Reset()
 
         self.Write_MFRC522(self.TModeReg, 0x8D)
