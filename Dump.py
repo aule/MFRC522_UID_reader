@@ -1,47 +1,33 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 
-import RPi.GPIO as GPIO
+from time import sleep
 import MFRC522
-import signal
-
-continue_reading = True
-
-# Capture SIGINT for cleanup when the script is aborted
-def end_read(signal,frame):
-    global continue_reading
-    print "Ctrl+C captured, ending read."
-    continue_reading = False
-    GPIO.cleanup()
-
-# Hook the SIGINT
-signal.signal(signal.SIGINT, end_read)
 
 # Create an object of the class MFRC522
 MIFAREReader = MFRC522.MFRC522()
 
-# This loop keeps checking for chips. If one is near it will get the UID and authenticate
-while continue_reading:
-    
-    # Scan for cards    
-    (status,TagType) = MIFAREReader.MFRC522_Request(MIFAREReader.PICC_REQIDL)
+card_detected = False  # to eliminate duplicate no card errors
 
-    # If a card is found
-    if status == MIFAREReader.MI_OK:
-        print "Card detected"
-    
-    # Get the UID of the card
-    (status,uid) = MIFAREReader.MFRC522_Anticoll()
+# This loop keeps checking for chips.
+# If one is near it will get the UID and authenticate
+while True:
+    try:
+        # Scan for cards
+        MIFAREReader.MFRC522_Request(MIFAREReader.PICC_REQIDL)
 
-    # If we have the UID, continue
-    if status == MIFAREReader.MI_OK:
+        print("Card detected")
+        card_detected = True
+
+        # Get the UID of the card
+        uid = MIFAREReader.MFRC522_Anticoll()
 
         # Print UID
-        print "Card read UID: "+str(uid[0])+","+str(uid[1])+","+str(uid[2])+","+str(uid[3])
-    
+        print("Card read UID: {!r}".format(uid[:4]))
+
         # This is the default key for authentication
-        key = [0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]
-        
+        key = [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]
+
         # Select the scanned tag
         MIFAREReader.MFRC522_SelectTag(uid)
 
@@ -50,3 +36,14 @@ while continue_reading:
 
         # Stop
         MIFAREReader.MFRC522_StopCrypto1()
+
+    except MFRC522.NoCardInField:
+        if card_detected:
+            card_detected = False
+            print("No card in field")
+        sleep(0.1)
+    except MFRC522.MifareError as error:
+        print("Error: {!r}".format(error))
+    except KeyboardInterrupt:
+        print("Ctrl+C captured, ending read.")
+        break

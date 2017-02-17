@@ -1,83 +1,81 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 
+from time import sleep
 import MFRC522
 
 # Create an object of the class MFRC522
 MIFAREReader = MFRC522.MFRC522()
 
-# This loop keeps checking for chips. If one is near it will get the UID and authenticate
+card_detected = False  # to eliminate duplicate no card errors
+
+# This loop keeps checking for chips.
+# If one is near it will get the UID and authenticate
 while True:
-    
-    # Scan for cards    
-    (status,TagType) = MIFAREReader.MFRC522_Request(MIFAREReader.PICC_REQIDL)
+    try:
+        # Scan for cards
+        MIFAREReader.MFRC522_Request(MIFAREReader.PICC_REQIDL)
 
-    # If a card is found
-    if status == MIFAREReader.MI_OK:
-        print "Card detected"
-    
-    # Get the UID of the card
-    (status,uid) = MIFAREReader.MFRC522_Anticoll()
+        print("Card detected")
+        card_detected = True
 
-    # If we have the UID, continue
-    if status == MIFAREReader.MI_OK:
+        # Get the UID of the card
+        uid = MIFAREReader.MFRC522_Anticoll()
 
         # Print UID
-        print "Card read UID: "+str(uid[0])+","+str(uid[1])+","+str(uid[2])+","+str(uid[3])
-    
+        print("Card read UID: {!r}".format(uid[:4]))
+
         # This is the default key for authentication
-        key = [0xFF,0xFF,0xFF,0xFF,0xFF,0xFF]
-        
+        key = [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]
+
         # Select the scanned tag
         MIFAREReader.MFRC522_SelectTag(uid)
 
+        print("Card Selected")
+
         # Authenticate
-        status = MIFAREReader.MFRC522_Auth(MIFAREReader.PICC_AUTHENT1A, 8, key, uid)
-        print "\n"
+        MIFAREReader.MFRC522_Auth(MIFAREReader.PICC_AUTHENT1A, 8, key, uid)
 
-        # Check if authenticated
-        if status == MIFAREReader.MI_OK:
+        print("Card Authenticated")
 
-            # Variable for the data to write
-            data = []
+        # Variable for the data to write (Fill the data with 0xFF)
+        data = [0xFF] * 16
 
-            # Fill the data with 0xFF
-            for x in range(0,16):
-                data.append(0xFF)
+        print("Sector 8 looked like this:")
+        # Read block 8
+        print(MIFAREReader.MFRC522_Read(8))
 
-            print "Sector 8 looked like this:"
-            # Read block 8
-            MIFAREReader.MFRC522_Read(8)
-            print "\n"
+        print("Sector 8 will now be filled with 0xFF:")
+        # Write the data
+        print(MIFAREReader.MFRC522_Write(8, data))
 
-            print "Sector 8 will now be filled with 0xFF:"
-            # Write the data
-            MIFAREReader.MFRC522_Write(8, data)
-            print "\n"
+        print("It now looks like this:")
+        # Check to see if it was written
+        print(MIFAREReader.MFRC522_Read(8))
 
-            print "It now looks like this:"
-            # Check to see if it was written
-            MIFAREReader.MFRC522_Read(8)
-            print "\n"
+        # Fill the data with 0x00
+        data = [0] * 16
 
-            data = []
-            # Fill the data with 0x00
-            for x in range(0,16):
-                data.append(0x00)
+        print("Now we fill it with 0x00:")
+        MIFAREReader.MFRC522_Write(8, data)
 
-            print "Now we fill it with 0x00:"
-            MIFAREReader.MFRC522_Write(8, data)
-            print "\n"
+        print("It is now empty:")
+        # Check to see if it was written
+        print(MIFAREReader.MFRC522_Read(8))
 
-            print "It is now empty:"
-            # Check to see if it was written
-            MIFAREReader.MFRC522_Read(8)
-            print "\n"
+        # Stop
+        MIFAREReader.MFRC522_StopCrypto1()
 
-            # Stop
-            MIFAREReader.MFRC522_StopCrypto1()
+        print("Done!")
+        break
 
-            # Make sure to stop reading for cards
-            continue_reading = False
-        else:
-            print "Authentication error"
+    except MFRC522.NoCardInField:
+        if card_detected:
+            card_detected = False
+            print("No card in field")
+        sleep(0.1)
+    except MFRC522.MifareError as error:
+        print("Error: {!r}".format(error))
+    except KeyboardInterrupt:
+        print("Ctrl+C captured, ending read.")
+        break
