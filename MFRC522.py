@@ -3,8 +3,23 @@
 
 import RPi.GPIO as GPIO
 import spi
-import signal
-import time
+from time import sleep
+
+
+class MifareError(Exception):
+    pass
+
+
+class NoCardInField(MifareError):
+    pass
+
+
+class InvalidCard(MifareError):
+    pass
+
+
+class MifareAuthError(MifareError):
+    pass
 
 
 class MFRC522:
@@ -12,99 +27,95 @@ class MFRC522:
 
     MAX_LEN = 16
 
-    PCD_IDLE       = 0x00
-    PCD_AUTHENT    = 0x0E
-    PCD_RECEIVE    = 0x08
-    PCD_TRANSMIT   = 0x04
+    PCD_IDLE = 0x00
+    PCD_AUTHENT = 0x0E
+    PCD_RECEIVE = 0x08
+    PCD_TRANSMIT = 0x04
     PCD_TRANSCEIVE = 0x0C
     PCD_RESETPHASE = 0x0F
-    PCD_CALCCRC    = 0x03
+    PCD_CALCCRC = 0x03
 
-    PICC_REQIDL    = 0x26
-    PICC_REQALL    = 0x52
-    PICC_ANTICOLL  = 0x93
+    PICC_REQIDL = 0x26
+    PICC_REQALL = 0x52
+    PICC_ANTICOLL = 0x93
     PICC_SElECTTAG = 0x93
     PICC_AUTHENT1A = 0x60
     PICC_AUTHENT1B = 0x61
-    PICC_READ      = 0x30
-    PICC_WRITE     = 0xA0
+    PICC_READ = 0x30
+    PICC_WRITE = 0xA0
     PICC_DECREMENT = 0xC0
     PICC_INCREMENT = 0xC1
-    PICC_RESTORE   = 0xC2
-    PICC_TRANSFER  = 0xB0
-    PICC_HALT      = 0x50
+    PICC_RESTORE = 0xC2
+    PICC_TRANSFER = 0xB0
+    PICC_HALT = 0x50
 
-    MI_OK       = 0
-    MI_NOTAGERR = 1
-    MI_ERR      = 2
+    Reserved00 = 0x00
+    CommandReg = 0x01
+    CommIEnReg = 0x02
+    DivlEnReg = 0x03
+    CommIrqReg = 0x04
+    DivIrqReg = 0x05
+    ErrorReg = 0x06
+    Status1Reg = 0x07
+    Status2Reg = 0x08
+    FIFODataReg = 0x09
+    FIFOLevelReg = 0x0A
+    WaterLevelReg = 0x0B
+    ControlReg = 0x0C
+    BitFramingReg = 0x0D
+    CollReg = 0x0E
+    Reserved01 = 0x0F
 
-    Reserved00     = 0x00
-    CommandReg     = 0x01
-    CommIEnReg     = 0x02
-    DivlEnReg      = 0x03
-    CommIrqReg     = 0x04
-    DivIrqReg      = 0x05
-    ErrorReg       = 0x06
-    Status1Reg     = 0x07
-    Status2Reg     = 0x08
-    FIFODataReg    = 0x09
-    FIFOLevelReg   = 0x0A
-    WaterLevelReg  = 0x0B
-    ControlReg     = 0x0C
-    BitFramingReg  = 0x0D
-    CollReg        = 0x0E
-    Reserved01     = 0x0F
-
-    Reserved10     = 0x10
-    ModeReg        = 0x11
-    TxModeReg      = 0x12
-    RxModeReg      = 0x13
-    TxControlReg   = 0x14
-    TxAutoReg      = 0x15
-    TxSelReg       = 0x16
-    RxSelReg       = 0x17
+    Reserved10 = 0x10
+    ModeReg = 0x11
+    TxModeReg = 0x12
+    RxModeReg = 0x13
+    TxControlReg = 0x14
+    TxAutoReg = 0x15
+    TxSelReg = 0x16
+    RxSelReg = 0x17
     RxThresholdReg = 0x18
-    DemodReg       = 0x19
-    Reserved11     = 0x1A
-    Reserved12     = 0x1B
-    MifareReg      = 0x1C
-    Reserved13     = 0x1D
-    Reserved14     = 0x1E
+    DemodReg = 0x19
+    Reserved11 = 0x1A
+    Reserved12 = 0x1B
+    MifareReg = 0x1C
+    Reserved13 = 0x1D
+    Reserved14 = 0x1E
     SerialSpeedReg = 0x1F
 
-    Reserved20        = 0x20
-    CRCResultRegM     = 0x21
-    CRCResultRegL     = 0x22
-    Reserved21        = 0x23
-    ModWidthReg       = 0x24
-    Reserved22        = 0x25
-    RFCfgReg          = 0x26
-    GsNReg            = 0x27
-    CWGsPReg          = 0x28
-    ModGsPReg         = 0x29
-    TModeReg          = 0x2A
-    TPrescalerReg     = 0x2B
-    TReloadRegH       = 0x2C
-    TReloadRegL       = 0x2D
+    Reserved20 = 0x20
+    CRCResultRegM = 0x21
+    CRCResultRegL = 0x22
+    Reserved21 = 0x23
+    ModWidthReg = 0x24
+    Reserved22 = 0x25
+    RFCfgReg = 0x26
+    GsNReg = 0x27
+    CWGsPReg = 0x28
+    ModGsPReg = 0x29
+    TModeReg = 0x2A
+    TPrescalerReg = 0x2B
+    TReloadRegH = 0x2C
+    TReloadRegL = 0x2D
     TCounterValueRegH = 0x2E
     TCounterValueRegL = 0x2F
 
-    Reserved30      = 0x30
-    TestSel1Reg     = 0x31
-    TestSel2Reg     = 0x32
-    TestPinEnReg    = 0x33
+    Reserved30 = 0x30
+    TestSel1Reg = 0x31
+    TestSel2Reg = 0x32
+    TestPinEnReg = 0x33
     TestPinValueReg = 0x34
-    TestBusReg      = 0x35
-    AutoTestReg     = 0x36
-    VersionReg      = 0x37
-    AnalogTestReg   = 0x38
-    TestDAC1Reg     = 0x39
-    TestDAC2Reg     = 0x3A
-    TestADCReg      = 0x3B
-    Reserved31      = 0x3C
-    Reserved32      = 0x3D
-    Reserved33      = 0x3E
-    Reserved34      = 0x3F
+    TestBusReg = 0x35
+    AutoTestReg = 0x36
+    VersionReg = 0x37
+    AnalogTestReg = 0x38
+    TestDAC1Reg = 0x39
+    TestDAC2Reg = 0x3A
+    TestADCReg = 0x3B
+    Reserved31 = 0x3C
+    Reserved32 = 0x3D
+    Reserved33 = 0x3E
+    Reserved34 = 0x3F
 
     serNum = []
 
@@ -141,15 +152,9 @@ class MFRC522:
     def AntennaOff(self):
         self.ClearBitMask(self.TxControlReg, 0x03)
 
-    def MFRC522_ToCard(self, command, sendData):
-        backData = []
-        backLen = 0
-        status = self.MI_ERR
+    def MFRC522_ToCard(self, command, send_data):
         irqEn = 0x00
         waitIRq = 0x00
-        lastBits = None
-        n = 0
-        i = 0
 
         if command == self.PCD_AUTHENT:
             irqEn = 0x12
@@ -164,245 +169,167 @@ class MFRC522:
 
         self.Write_MFRC522(self.CommandReg, self.PCD_IDLE)
 
-        while(i < len(sendData)):
-            self.Write_MFRC522(self.FIFODataReg, sendData[i])
-            i = i + 1
+        for value in send_data:
+            self.Write_MFRC522(self.FIFODataReg, value)
 
         self.Write_MFRC522(self.CommandReg, command)
 
         if command == self.PCD_TRANSCEIVE:
             self.SetBitMask(self.BitFramingReg, 0x80)
 
-        i = 2000
-        while True:
-            n = self.Read_MFRC522(self.CommIrqReg)
-            i = i - 1
-            if ~((i != 0) and ~(n & 0x01) and ~(n & waitIRq)):
-                break
+        def await_interrupt(retry_count=100, delay=0.01):
+            for _ in range(retry_count):
+                sleep(delay)
+                interrupts = self.Read_MFRC522(self.CommIrqReg)
+                if (interrupts & 0x01) or (interrupts & waitIRq):
+                    return interrupts
+            raise MifareError("No response within waiting period.")
 
-        self.ClearBitMask(self.BitFramingReg, 0x80)
+        try:
+            interrupts = await_interrupt()
+        finally:
+            self.ClearBitMask(self.BitFramingReg, 0x80)
 
-        if i != 0:
-            if (self.Read_MFRC522(self.ErrorReg) & 0x1B) == 0x00:
-                status = self.MI_OK
+        if (self.Read_MFRC522(self.ErrorReg) & 0x1B):
+            raise MifareError()
 
-                if n & irqEn & 0x01:
-                    status = self.MI_NOTAGERR
+        if interrupts & irqEn & 0x01:
+            raise NoCardInField()
 
-                if command == self.PCD_TRANSCEIVE:
-                    n = self.Read_MFRC522(self.FIFOLevelReg)
-                    lastBits = self.Read_MFRC522(self.ControlReg) & 0x07
-                    if lastBits != 0:
-                        backLen = (n - 1) * 8 + lastBits
-                    else:
-                        backLen = n * 8
-
-                    if n == 0:
-                        n = 1
-                    if n > self.MAX_LEN:
-                        n = self.MAX_LEN
-
-                    i = 0
-                    while i < n:
-                        backData.append(self.Read_MFRC522(self.FIFODataReg))
-                        i = i + 1
+        if command == self.PCD_TRANSCEIVE:
+            count = self.Read_MFRC522(self.FIFOLevelReg)
+            last_bits = self.Read_MFRC522(self.ControlReg) & 0x07
+            if last_bits:
+                length_in_bits = (count - 1) * 8 + last_bits
             else:
-                status = self.MI_ERR
+                length_in_bits = count * 8
 
-        return (status, backData, backLen)
+            count = min(self.MAX_LEN, max(1, count))
 
-    def MFRC522_Request(self, reqMode):
-        status = None
-        backBits = None
-        TagType = []
+            returned_data = [
+                self.Read_MFRC522(self.FIFODataReg) for _ in range(count)
+            ]
+
+            return (returned_data, length_in_bits)
+        else:
+            return ([], 0)
+
+    def MFRC522_Request(self, req_mode):
+        tag_type = [req_mode]
 
         self.Write_MFRC522(self.BitFramingReg, 0x07)
 
-        TagType.append(reqMode)
-        (status, backData, backBits) = self.MFRC522_ToCard(
-            self.PCD_TRANSCEIVE, TagType
+        (backData, backBits) = self.MFRC522_ToCard(
+            self.PCD_TRANSCEIVE, tag_type
         )
 
-        if ((status != self.MI_OK) | (backBits != 0x10)):
-            status = self.MI_ERR
+        if (backBits != 0x10):
+            raise MifareError()
 
-        return (status, backBits)
+        return backData
 
-    def MFRC522_Anticoll(self):
-        backData = []
-        serNumCheck = 0
-
-        serNum = []
+    def MFRC522_Anticoll(self):  # Anticollision
+        serial = [self.PICC_ANTICOLL, 0x20]
 
         self.Write_MFRC522(self.BitFramingReg, 0x00)
 
-        serNum.append(self.PICC_ANTICOLL)
-        serNum.append(0x20)
+        serial_number, _ = self.MFRC522_ToCard(self.PCD_TRANSCEIVE, serial)
 
-        (status, backData, backBits) = self.MFRC522_ToCard(
-            self.PCD_TRANSCEIVE, serNum
-        )
+        if len(serial_number) != 5:
+            raise InvalidCard("Serial number had invalid length")
 
-        if(status == self.MI_OK):
-            i = 0
-            if len(backData) == 5:
-                while i < 4:
-                    serNumCheck = serNumCheck ^ backData[i]
-                    i = i + 1
-                if serNumCheck != backData[i]:
-                    status = self.MI_ERR
-            else:
-                status = self.MI_ERR
+        checksum = 0
+        for byte in serial_number:
+            checksum ^= byte
+        if checksum:
+            raise InvalidCard("Serial number checksum failed")
 
-        return (status, backData)
+        return serial_number
 
-    def CalulateCRC(self, pIndata):
+    def CalulateCRC(self, data):
         self.ClearBitMask(self.DivIrqReg, 0x04)
         self.SetBitMask(self.FIFOLevelReg, 0x80)
-        i = 0
-        while i < len(pIndata):
-            self.Write_MFRC522(self.FIFODataReg, pIndata[i])
-            i = i + 1
+        for byte in data:
+            self.Write_MFRC522(self.FIFODataReg, byte)
         self.Write_MFRC522(self.CommandReg, self.PCD_CALCCRC)
-        i = 0xFF
-        while True:
-            n = self.Read_MFRC522(self.DivIrqReg)
-            i = i - 1
-            if not ((i != 0) and not (n & 0x04)):
+        for _ in range(0xFF):
+            if self.Read_MFRC522(self.DivIrqReg) & 0x04:
                 break
-        pOutData = []
-        pOutData.append(self.Read_MFRC522(self.CRCResultRegL))
-        pOutData.append(self.Read_MFRC522(self.CRCResultRegM))
+        pOutData = [
+            self.Read_MFRC522(self.CRCResultRegL),
+            self.Read_MFRC522(self.CRCResultRegM)
+        ]
         return pOutData
 
-    def MFRC522_SelectTag(self, serNum):
+    def MFRC522_SelectTag(self, serial_number):
         backData = []
-        buf = []
-        buf.append(self.PICC_SElECTTAG)
-        buf.append(0x70)
-        i = 0
-        while i < 5:
-            buf.append(serNum[i])
-            i = i + 1
-        pOut = self.CalulateCRC(buf)
-        buf.append(pOut[0])
-        buf.append(pOut[1])
-        (status, backData, backLen) = self.MFRC522_ToCard(
-            self.PCD_TRANSCEIVE, buf
-        )
+        buf = [self.PICC_SElECTTAG, 0x70]
+        buf.extend(serial_number)
+        buf.extend(self.CalulateCRC(buf))
+        try:
+            backData, backLen = self.MFRC522_ToCard(self.PCD_TRANSCEIVE, buf)
+        except MifareError:
+            return 0  # No idea why, but the original code did this
 
-        if (status == self.MI_OK) and (backLen == 0x18):
+        if backLen == 0x18:
             print("Size: {}".format(backData[0]))
             return backData[0]
         else:
             return 0
 
     def MFRC522_Auth(self, authMode, BlockAddr, Sectorkey, serNum):
-        buff = []
-
-        # First byte should be the authMode (A or B)
-        buff.append(authMode)
-
-        # Second byte is the trailerBlock (usually 7)
-        buff.append(BlockAddr)
+        buf = [
+            authMode,  # First byte should be the authMode (A or B)
+            BlockAddr  # Second byte is the trailerBlock (usually 7)
+        ]
 
         # Now we need to append the authKey which usually is 6 bytes of 0xFF
-        i = 0
-        while(i < len(Sectorkey)):
-            buff.append(Sectorkey[i])
-            i = i + 1
-        i = 0
+        buf.extend(Sectorkey)
 
         # Next we append the first 4 bytes of the UID
-        while(i < 4):
-            buff.append(serNum[i])
-            i = i + 1
+        buf.extend(serNum[:4])
 
         # Now we start the authentication itself
-        (status, backData, backLen) = self.MFRC522_ToCard(
-            self.PCD_AUTHENT, buff
-        )
+        try:
+            backData, backLen = self.MFRC522_ToCard(self.PCD_AUTHENT, buf)
+        except NoCardInField:
+            raise
+        except MifareError:
+            raise MifareAuthError()
 
-        # Check if an error occurred
-        if not(status == self.MI_OK):
-            print("AUTH ERROR!!")
-        if not (self.Read_MFRC522(self.Status2Reg) & 0x08) != 0:
-            print("AUTH ERROR(status2reg & 0x08) != 0")
-        # Return the status
-        return status
+        # Check if crypto1 unit is switched on
+        if not (self.Read_MFRC522(self.Status2Reg) & 0x08):
+            MifareAuthError("MFCrypto1On bit not enabled")
 
     def MFRC522_StopCrypto1(self):
         self.ClearBitMask(self.Status2Reg, 0x08)
 
-    def MFRC522_Read(self, blockAddr):
-        recvData = []
-        recvData.append(self.PICC_READ)
-        recvData.append(blockAddr)
-        pOut = self.CalulateCRC(recvData)
-        recvData.append(pOut[0])
-        recvData.append(pOut[1])
-        (status, backData, backLen) = self.MFRC522_ToCard(
-            self.PCD_TRANSCEIVE, recvData
-        )
-        if not(status == self.MI_OK):
-            print("Error while reading!")
-        i = 0
-        if len(backData) == 16:
-            print("Sector {} {}".format(blockAddr, backData))
+    def MFRC522_Read(self, block_address):
+        recv_data = [self.PICC_READ, block_address]
+        recv_data.extend(self.CalulateCRC(recv_data))
+        returned_data, _ = self.MFRC522_ToCard(self.PCD_TRANSCEIVE, recv_data)
+        if len(returned_data) == 16:
+            print("Sector {} {}".format(block_address, returned_data))
+        return returned_data
 
-    def MFRC522_Write(self, blockAddr, writeData):
-        buff = []
-        buff.append(self.PICC_WRITE)
-        buff.append(blockAddr)
-        crc = self.CalulateCRC(buff)
-        buff.append(crc[0])
-        buff.append(crc[1])
-        (status, backData, backLen) = self.MFRC522_ToCard(
-            self.PCD_TRANSCEIVE, buff
-        )
-        success = (
-            (status == self.MI_OK) and
-            (backLen == 4) and
-            ((backData[0] & 0x0F) == 0x0A)
-        )
-        if not success:
-            status = self.MI_ERR
+    def MFRC522_Write(self, block_address, data):
+        buf = [self.PICC_WRITE, block_address]
+        buf.extend(self.CalulateCRC(buf))
+        returned_data, length = self.MFRC522_ToCard(self.PCD_TRANSCEIVE, buf)
+        if length != 4 or (returned_data[0] & 0x0F) != 0x0A:
+            raise MifareError()
 
-        print("{} backdata &0x0F == 0x0A {}".format(
-            backLen, backData[0] & 0x0F)
-        )
-        if status == self.MI_OK:
-            i = 0
-            buf = []
-            while i < 16:
-                buf.append(writeData[i])
-                i = i + 1
-            crc = self.CalulateCRC(buf)
-            buf.append(crc[0])
-            buf.append(crc[1])
-            (status, backData, backLen) = self.MFRC522_ToCard(
-                self.PCD_TRANSCEIVE, buf
-            )
-            success = (
-                (status == self.MI_OK) and
-                (backLen == 4) and
-                ((backData[0] & 0x0F) == 0x0A)
-            )
-            if not success:
-                print("Error while writing")
-            if status == self.MI_OK:
-                print("Data written")
+        buf = []
+        buf.extend(data)
+        buf.extend(self.CalulateCRC(buf))
+        returned_data, length = self.MFRC522_ToCard(self.PCD_TRANSCEIVE, buf)
+        if length != 4 or (returned_data[0] & 0x0F) != 0x0A:
+            raise MifareError()
 
     def MFRC522_DumpClassic1K(self, key, uid):
-        i = 0
-        while i < 64:
-                status = self.MFRC522_Auth(self.PICC_AUTHENT1A, i, key, uid)
-                # Check if authenticated
-                if status == self.MI_OK:
-                        self.MFRC522_Read(i)
-                else:
-                        print("Authentication error")
-                i = i + 1
+        for i in range(64):
+            self.MFRC522_Auth(self.PICC_AUTHENT1A, i, key, uid)
+            print(self.MFRC522_Read(i))
 
     def MFRC522_Init(self):
         GPIO.output(self.NRSTPD, 1)
