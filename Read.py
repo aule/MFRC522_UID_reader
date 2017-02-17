@@ -2,6 +2,7 @@
 # -*- coding: utf8 -*-
 
 import MFRC522
+from time import sleep
 
 # Create an object of the class MFRC522
 MIFAREReader = MFRC522.MFRC522()
@@ -37,6 +38,8 @@ while True:
         print(MIFAREReader.MFRC522_Read(8))
         MIFAREReader.MFRC522_StopCrypto1()
 
+    except MFRC522.NoCardInField:
+        sleep(0.1)
     except MFRC522.MifareError as error:
         print("Error: {!r}".format(error))
     except KeyboardInterrupt:

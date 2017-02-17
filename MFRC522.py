@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf8 -*-
 
-import spi
+from spidev import SpiDev
 from time import sleep
 
 
@@ -118,18 +118,19 @@ class MFRC522:
 
     serNum = []
 
-    def __init__(self, dev='/dev/spidev0.0', spd=1000000):
-        spi.openSPI(device=dev, speed=spd)
+    def __init__(self, port=0, device=0):
+        self.spi = SpiDev()
+        self.spi.open(port, device)
         self.MFRC522_Init()
 
     def MFRC522_Reset(self):
         self.Write_MFRC522(self.CommandReg, self.PCD_RESETPHASE)
 
     def Write_MFRC522(self, addr, val):
-        spi.transfer(((addr << 1) & 0x7E, val))
+        self.spi.xfer([(addr << 1) & 0x7E, val])
 
     def Read_MFRC522(self, addr):
-        val = spi.transfer((((addr << 1) & 0x7E) | 0x80, 0))
+        val = self.spi.xfer([((addr << 1) & 0x7E) | 0x80, 0])
         return val[1]
 
     def SetBitMask(self, reg, mask):
